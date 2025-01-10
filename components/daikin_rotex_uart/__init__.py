@@ -5,11 +5,26 @@ from esphome.core import Lambda
 from esphome.cpp_types import std_ns
 from esphome.components import sensor, binary_sensor, text_sensor, uart
 from esphome.components.uart import UARTComponent
+from .translations.translate import (
+    CONF_LANGUAGE,
+    SUPPORTED_LANGUAGES,
+    delayed_translate,
+    apply_translation_to_mapping,
+    set_language,
+    check_translations_integrity
+)
+
 from enum import Enum
+import logging
 
 CODEOWNERS = ["@wrfz"]
 AUTO_LOAD = ["binary_sensor", "sensor", "text_sensor"]
 DEPENDENCIES = ["uart"]
+
+_LOGGER = logging.getLogger(__name__)
+
+# Before starting, check the integrity of the translation dictionaries
+check_translations_integrity()
 
 daikin_rotex_uart_ns = cg.esphome_ns.namespace("daikin_rotex_uart")
 DaikinRotexUARTComponent = daikin_rotex_uart_ns.class_(
@@ -257,13 +272,13 @@ sensor_configuration = [
         "dataSize": 1,
         "icon": "mdi:sun-snowflake-variant",
         "map": {
-            0x00: "Standby",
-            0x01: "Heizen",
-            0x02: "Kühlen",
+            0x00: delayed_translate("standby"),
+            0x01: delayed_translate("heating"),
+            0x02: delayed_translate("cooling"),
             0x03: "???",
-            0x04: "Warmwasserbereitung",
-            0x05: "Heizen + Warmwasser",
-            0x06: "Kühlen + Warmwasser"
+            0x04: delayed_translate("hot_water"),
+            0x05: delayed_translate("heating_hot_water"),
+            0x06: delayed_translate("cooling_hot_water"),
         },
         "handle_lambda": """
             return data[0] >> 4;
@@ -417,6 +432,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(DaikinRotexUARTComponent),
         cv.Required(CONF_UART_ID): cv.use_id(UARTComponent),
         cv.Required(CONF_OUTDOR_UNIT): cv.ensure_list(cv.enum(OUTDOOR_UNIT), validate_setoutdoor_unit),
+        cv.Optional(CONF_LANGUAGE, default="de"): cv.enum(SUPPORTED_LANGUAGES, lower=True, space="_"),
         cv.Required(CONF_ENTITIES): cv.Schema(
             entity_schemas
         )
@@ -434,6 +450,11 @@ FINAL_VALIDATE_SCHEMA = uart.final_validate_device_schema(
 )
 
 async def to_code(config):
+
+    if CONF_LANGUAGE in config:
+        lang = config[CONF_LANGUAGE]
+        set_language(lang)
+
     cg.add(cg.RawStatement('#include "esphome/components/daikin_rotex_uart/unit_converter.h"'))
 
     u8_ptr = std_ns.class_("uint8_t*")
@@ -447,7 +468,8 @@ async def to_code(config):
                 entity = None
 
                 divider = sens_conf.get("divider", 1.0)
-                mapping = sens_conf.get("map", {})
+                # translate mapping
+                mapping = apply_translation_to_mapping(sens_conf.get("map", {}))
                 str_map = "|".join([f"0x{int(key * divider) & 0xFFFF :02X}:{value}" for key, value in mapping.items()])
 
                 match sens_conf.get("type"):

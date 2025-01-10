@@ -1,0 +1,149 @@
+esphome:
+    name: hpsu-uart
+    friendly_name: HPSU.UART
+    platformio_options:
+        build_unflags:
+            - "-std=gnu++11"
+            - "-fno-rtti"
+        build_flags:
+            - "-std=gnu++17"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+external_components:
+  - source: github://wrfz/esphome-components
+    components: [daikin_rotex_uart]
+    refresh: 0s
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret hpsu_uart_api_encryption_key
+
+ota:
+  platform: esphome
+  password: !secret hpsu_uart_ota_password
+
+web_server:
+  version: 3
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+
+  ap:
+    ssid: DaikinRotex Fallback Hotspot
+    password: H3jGqANSa7aL
+
+captive_portal:
+
+time:
+  - platform: homeassistant
+
+debug:
+  update_interval: 5s
+
+sensor:
+  - platform: uptime
+    type: seconds
+    name: Uptime Seconds
+  - platform: uptime
+    type: timestamp
+    name: Uptime Timestamp
+  - platform: debug
+    free:
+      name: "Heap Free"
+    block:
+      name: "Heap Max Block"
+  - platform: wifi_signal
+    name: "WiFi Signal Sensor"
+    update_interval: 60s
+
+text_sensor:
+  - platform: debug
+    device:
+      name: "Device Info"
+    reset_reason:
+      name: "Reset Reason"
+  - platform: wifi_info
+    ip_address:
+      name: ESP IP Address
+    ssid:
+      name: ESP Connected SSID
+
+button:
+  - platform: restart
+    name: "Rotex ESP Restart"
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO12
+  rx_pin: GPIO11
+  baud_rate: 9600
+  parity: EVEN
+  data_bits: 8
+  stop_bits: 1
+
+daikin_rotex_uart:
+  id: rotext_hpsu_uart
+  uart_id: uart_bus
+  #outdoor_unit: RRLQ006CAV3  #Please comment in your outdoor unit
+  #outdoor_unit: RRLQ008CAV3
+  #outdoor_unit: RRLQ011CAW1
+  #outdoor_unit: ERLQ016CAW1
+  #outdoor_unit: ERGA08DAV3
+  #outdoor_unit: RRGA08DAV3
+  entities:
+    mode_of_operating:
+      name: Mode of Operating
+    t_liq:
+      name: Liquid Line Temperature
+    liq_pressure:
+      name: Refrigerant Pressure
+    t_liq2:
+      name: Refrigerant Temperature
+    exv:
+      name: Expansion Valve
+    exch_temp:
+      name: Fin Heat Exchanger Temperature
+    fan_speed:
+      name: Fan Speed
+    temp_after_compr:
+      name: Temperature After Compressor
+    inv_freq:
+      name: Compressor Frequency
+    inv_prim_current:
+      name: INV Primary Current
+    inv_sec_current:
+      name: INV Secondary Current
+    dhw_temp:
+      name: DHW Tank Temperature
+    tv:
+      name: Flow Temperature (TV)
+    tv_bh:
+      name: Flow Temperature (TVBH)
+    tr:
+      name: Return Temperature
+    outdoor_temp:
+      name: Outdoor Air Temperature
+    tgt_cond_temp:
+      name: Target Condensation Temperature
+    buh1:
+      name: Heating Rod Stage 1
+    buh2:
+      name: Heating Rod Stage 2
+    buh_bsh:
+      name: Heating Rod Storage
+    press_eq:
+      name: Pressure Equalization
+    4_way_valve:
+      name: 4-Way Valve
+    defrost_operation:
+      name: Defrost Operation
+
